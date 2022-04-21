@@ -12,6 +12,7 @@ from .transforms import (Albu, CutOut, Expand, MinIoURandomCrop, Normalize,
                          Pad, PhotoMetricDistortion, RandomCenterCropPad,
                          RandomCrop, RandomFlip, RandomShift, Resize,
                          SegRescale)
+from .my_augumentation import GridMask, Mixup, BBoxJitter
 
 __all__ = [
     'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',
@@ -22,5 +23,6 @@ __all__ = [
     'MinIoURandomCrop', 'Expand', 'PhotoMetricDistortion', 'Albu',
     'InstaBoost', 'RandomCenterCropPad', 'AutoAugment', 'CutOut', 'Shear',
     'Rotate', 'ColorTransform', 'EqualizeTransform', 'BrightnessTransform',
-    'ContrastTransform', 'Translate', 'RandomShift'
+    'ContrastTransform', 'Translate', 'RandomShift',
+    'GridMask', 'Mixup', 'BBoxJitter'
 ]
