@@ -1,12 +1,12 @@
 norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
 model = dict(
     type='CascadeRCNN',
-    pretrained='./pretrained/simmim_finetune_swin_base_800ep.pth',
+    pretrained='./pretrained/simmim_finetune__swin_large__img224_window14__800ep.pth',
     backbone=dict(
         type='CBSwinTransformer',
-        embed_dim=128,
+        embed_dim=192,
         depths=[2, 2, 18, 2],
-        num_heads=[4, 8, 16, 32],
+        num_heads=[6, 12, 24, 48],
         window_size=7,
         mlp_ratio=4.0,
         qkv_bias=True,
@@ -20,7 +20,8 @@ model = dict(
         use_checkpoint=False),
     neck=dict(
         type='CBFPN',
-        in_channels=[128, 256, 512, 1024],
+        # in_channels=[128, 256, 512, 1024],
+        in_channels=[192, 384, 768, 1536],
         out_channels=256,
         num_outs=5),
     rpn_head=dict(
@@ -38,10 +39,8 @@ model = dict(
             target_stds=[1.0, 1.0, 1.0, 1.0]),
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-        # loss_bbox=dict(
-        #     type='SmoothL1Loss', beta=0.1111111111111111, loss_weight=1.0)),
-        reg_decoded_bbox=True,
-        loss_bbox=dict(type='GIoULoss', loss_weight=5.0)),
+        loss_bbox=dict(
+            type='SmoothL1Loss', beta=0.1111111111111111, loss_weight=1.0)),
     roi_head=dict(
         type='CascadeRoIHead',
         num_stages=3,
@@ -674,4 +673,4 @@ resume_from = None
 workflow = [('train', 1)]
 fp16 = None
 gpu_ids = range(0, 4)
-work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_sabl_gc_gn_alltrick_simmim_rpn_giou'
+work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_large_sabl_gc_gn_alldata_simmim_size7'
