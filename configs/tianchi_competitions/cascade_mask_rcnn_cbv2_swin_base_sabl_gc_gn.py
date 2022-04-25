@@ -38,10 +38,10 @@ model = dict(
             target_stds=[1.0, 1.0, 1.0, 1.0]),
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-        # loss_bbox=dict(
-        #     type='SmoothL1Loss', beta=0.1111111111111111, loss_weight=1.0)),
-        reg_decoded_bbox=True,
-        loss_bbox=dict(type='GIoULoss', loss_weight=5.0)),
+        loss_bbox=dict(
+            type='SmoothL1Loss', beta=0.1111111111111111, loss_weight=1.0)),
+        # reg_decoded_bbox=True,
+        # loss_bbox=dict(type='GIoULoss', loss_weight=5.0)),
     roi_head=dict(
         type='CascadeRoIHead',
         num_stages=3,
@@ -674,4 +674,4 @@ resume_from = None
 workflow = [('train', 1)]
 fp16 = None
 gpu_ids = range(0, 4)
-work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_sabl_gc_gn_alltrick_simmim_rpn_giou'
+work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_sabl_gc_gn_alltrick_simmim_3layer'

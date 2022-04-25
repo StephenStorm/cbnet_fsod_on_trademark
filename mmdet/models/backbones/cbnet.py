@@ -290,8 +290,10 @@ class CBSwinTransformer(BaseModule):
         self.cb_del_stages = cb_del_stages
         self.cb_modules = nn.ModuleList()
         for cb_idx in range(2):
+        # for cb_idx in range(3):
             cb_module = _SwinTransformer(embed_dim=embed_dim, **kwargs)
             if cb_idx > 0:
+            # if cb_idx > 1:
                 cb_module.del_layers(cb_del_stages)
             self.cb_modules.append(cb_module)
 
