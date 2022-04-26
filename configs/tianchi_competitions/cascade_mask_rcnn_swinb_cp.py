@@ -406,3 +406,4 @@ resume_from = None
 workflow = [('train', 1)]
 fp16 = None
 gpu_ids = range(0, 4)
+work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_3layer'
