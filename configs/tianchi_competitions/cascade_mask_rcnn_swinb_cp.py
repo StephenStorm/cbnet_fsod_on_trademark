@@ -283,7 +283,7 @@ albu_train_transforms = [
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
-    dict(type='LoadImageFromFile'),
+    dict(type='LoadImageFromFile', to_float32=True),
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='Mixup', p=0.5),
     dict(type='CopyPaste', p=0.3),
@@ -304,18 +304,19 @@ train_pipeline = [
             'prob': 0.5,
             'level': 6
         }]]),
-    dict(
-        type='Albu',
-        transforms=albu_train_transforms,
-        bbox_params=dict(
-            type='BboxParams',
-            format='pascal_voc',
-            label_fields=['gt_labels'],
-            min_visibility=0.0,
-            filter_lost_elements=True),
-        keymap=dict(img='image', gt_masks='masks', gt_bboxes='bboxes'),
-        update_pad_shape=False,
-        skip_img_without_anno=True),
+    
+    # dict(
+    #     type='Albu',
+    #     transforms=albu_train_transforms,
+    #     bbox_params=dict(
+    #         type='BboxParams',
+    #         format='pascal_voc',
+    #         label_fields=['gt_labels'],
+    #         min_visibility=0.0,
+    #         filter_lost_elements=True),
+    #     keymap=dict(img='image', gt_masks='masks', gt_bboxes='bboxes'),
+    #     update_pad_shape=False,
+    #     skip_img_without_anno=True),
     dict(
         type='Normalize',
         mean=[123.675, 116.28, 103.53],
@@ -326,7 +327,7 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])
 ]
 test_pipeline = [
-    dict(type='LoadImageFromFile'),
+    dict(type='LoadImageFromFile', to_float32=True),
     dict(
         type='MultiScaleFlipAug',
         img_scale=[(2048, 800), (2048, 900), (2048, 1000), (2048, 1100),
