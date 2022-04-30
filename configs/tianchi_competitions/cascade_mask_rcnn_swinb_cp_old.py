@@ -2,7 +2,7 @@ norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
 
 model = dict(
     type='CascadeRCNN',
-    pretrained='./pretrain/simmim_finetune__swin_base__img224_window7__800ep.pth',
+    pretrained='./pretrained/simmim_finetune_swin_base_800ep.pth',
     backbone=dict(
         type='CBSwinTransformer',
         embed_dim=128,
@@ -50,7 +50,8 @@ model = dict(
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
             out_channels=256,
             featmap_strides=[4, 8, 16, 32],
-            gc_context=True),
+            gc_context=True,
+        ),
         bbox_head=[
             dict(
                 type='SABLHead',
@@ -69,20 +70,18 @@ model = dict(
                 num_cls_fcs=1,
                 num_reg_fcs=0,
                 reg_class_agnostic=True,
+                # norm_cfg=None,
+                # norm_cfg=dict(type='SyncBN', requires_grad=True),
                 norm_cfg=norm_cfg,
                 bbox_coder=dict(
-                    type='BucketingBBoxCoder',
-                    num_buckets=14,
-                    scale_factor=1.7),
+                    type='BucketingBBoxCoder', num_buckets=14, scale_factor=1.7),
                 loss_cls=dict(
-                    type='CrossEntropyLoss',
-                    use_sigmoid=False,
-                    loss_weight=1.0),
+                    type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
                 loss_bbox_cls=dict(
-                    type='CrossEntropyLoss', use_sigmoid=True,
-                    loss_weight=1.0),
-                loss_bbox_reg=dict(
-                    type='SmoothL1Loss', beta=0.1, loss_weight=1.0)),
+                    type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
+                loss_bbox_reg=dict(type='SmoothL1Loss', beta=0.1,
+                                loss_weight=1.0)
+            ),
             dict(
                 type='SABLHead',
                 num_classes=50,
@@ -100,20 +99,18 @@ model = dict(
                 num_cls_fcs=1,
                 num_reg_fcs=0,
                 reg_class_agnostic=True,
+                # norm_cfg=None,
+                # norm_cfg=dict(type='SyncBN', requires_grad=True),
                 norm_cfg=norm_cfg,
                 bbox_coder=dict(
-                    type='BucketingBBoxCoder',
-                    num_buckets=14,
-                    scale_factor=1.5),
+                    type='BucketingBBoxCoder', num_buckets=14, scale_factor=1.5),
                 loss_cls=dict(
-                    type='CrossEntropyLoss',
-                    use_sigmoid=False,
-                    loss_weight=1.0),
+                    type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
                 loss_bbox_cls=dict(
-                    type='CrossEntropyLoss', use_sigmoid=True,
-                    loss_weight=1.0),
-                loss_bbox_reg=dict(
-                    type='SmoothL1Loss', beta=0.1, loss_weight=1.0)),
+                    type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
+                loss_bbox_reg=dict(type='SmoothL1Loss', beta=0.1,
+                                loss_weight=1.0)
+            ),
             dict(
                 type='SABLHead',
                 num_classes=50,
@@ -131,20 +128,17 @@ model = dict(
                 num_cls_fcs=1,
                 num_reg_fcs=0,
                 reg_class_agnostic=True,
+                # norm_cfg=None,
+                # norm_cfg=dict(type='SyncBN', requires_grad=True),
                 norm_cfg=norm_cfg,
                 bbox_coder=dict(
-                    type='BucketingBBoxCoder',
-                    num_buckets=14,
-                    scale_factor=1.3),
+                    type='BucketingBBoxCoder', num_buckets=14, scale_factor=1.3),
                 loss_cls=dict(
-                    type='CrossEntropyLoss',
-                    use_sigmoid=False,
-                    loss_weight=1.0),
+                    type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
                 loss_bbox_cls=dict(
-                    type='CrossEntropyLoss', use_sigmoid=True,
-                    loss_weight=1.0),
-                loss_bbox_reg=dict(
-                    type='SmoothL1Loss', beta=0.1, loss_weight=1.0))
+                    type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
+                loss_bbox_reg=dict(type='SmoothL1Loss', beta=0.1, loss_weight=1.0)
+            )
         ]),
     train_cfg=dict(
         rpn=dict(
@@ -285,7 +279,7 @@ img_norm_cfg = dict(
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Mixup', p=0.5),
+    dict(type='Mixup', p=0.3),
     dict(type='CopyPaste', p=0.3),
     dict(
         type='Resize',
@@ -363,7 +357,7 @@ data = dict(
             type='ConcatDataset',
             datasets=[datasetA]
         )
-    ),         
+    ),
     val=dict(
         type=dataset_type,
         ann_file='data/train_val_split/val.json',
@@ -411,5 +405,5 @@ load_from = None
 resume_from = None
 workflow = [('train', 1)]
 fp16 = None
-gpu_ids = range(0, 8)
-work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5'
+gpu_ids = range(0, 4)
+work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_3layer'
