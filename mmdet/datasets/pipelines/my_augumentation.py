@@ -22,141 +22,66 @@ except ImportError:
     albumentations = None
     Compose = None
 
+# import mmdet.datasets.pipelines.augmentation as augmentation
+import mmdet.datasets.pipelines.policy as policy
 
-@PIPELINES.register_module
-class GridMask(object):
-    def __init__(self, use_h=True, use_w=True, rotate=1, offset=False, ratio=0.5, mode=0, prob=0.7):
-        self.use_h = use_h
-        self.use_w = use_w
-        self.rotate = rotate
-        self.offset = offset
-        self.ratio = ratio
-        self.mode = mode
-        self.st_prob = prob
-        self.prob = prob
+from pycocotools.coco import COCO
+from torch.utils.data import Dataset
+import os
+
+# all data�ǵø���ȫ����·��!!!!!!!!!!!!!!!!!
+train_image_dir = 'data/train_val_split/train'
+train_ann = 'data/train_val_split/train.json'
 
 
-    def set_prob(self, epoch, max_epoch):
-        self.prob = self.st_prob * epoch / max_epoch
+class COCO_detection(Dataset):
+    def __init__(self, img_dir, ann, transforms=None):
+        super(COCO_detection, self).__init__()
+        self.img_dir = img_dir
+        self.transforms = transforms
+        self.coco = COCO(ann)
+        self.ids = list(sorted(self.coco.imgs.keys()))
+        self.label_map = {raw_label:i for i, raw_label in enumerate(self.coco.getCatIds())}
 
-    def __call__(self, results):
-        if np.random.rand() > self.prob:
-            return results
-        img,boxes=[results[k] for k in ('img','gt_bboxes')]
-        h,w,_=img.shape
-        # h = img.size(1)
-        # w = img.size(2)
-        self.d1 = 2
-        self.d2 = min(h, w)
-        hh = int(1.5 * h)
-        ww = int(1.5 * w)
-        d = np.random.randint(self.d1, self.d2)
-        # d = self.d
-        #        self.l = int(d*self.ratio+0.5)
-        if self.ratio == 1:
-            self.l = np.random.randint(1, d)
-        else:
-            self.l = min(max(int(d * self.ratio + 0.5), 1), d - 1)
-        mask = np.ones((hh, ww), np.float32)
-        st_h = np.random.randint(d)
-        st_w = np.random.randint(d)
-        if self.use_h:
-            for i in range(hh // d):
-                s = d * i + st_h
-                t = min(s + self.l, hh)
-                mask[s:t, :] *= 0
-        if self.use_w:
-            for i in range(ww // d):
-                s = d * i + st_w
-                t = min(s + self.l, ww)
-                mask[:, s:t] *= 0
+    def _load_image(self, id_):
+        img = self.coco.loadImgs(id_)[0]['file_name']
+        return Image.open(os.path.join(self.img_dir, img)).convert('RGB')
 
-        r = np.random.randint(self.rotate)
-        mask = Image.fromarray(np.uint8(mask))
-        mask = mask.rotate(r)
-        mask = np.asarray(mask)
-        #        mask = 1*(np.random.randint(0,3,[hh,ww])>0)
-        mask = mask[(hh - h) // 2:(hh - h) // 2 + h, (ww - w) // 2:(ww - w) // 2 + w]
+    def _load_target(self, id_):
+        if len(self.coco.loadAnns(self.coco.getAnnIds(id_))) == 0: return None, None
+        bboxs, labels = [], []
+        for ann in self.coco.loadAnns(self.coco.getAnnIds(id_)):
+            min_x, min_y, w, h = ann['bbox']
+            bboxs.append(torch.FloatTensor([min_x, min_y, min_x+w, min_y+h]))
+            labels.append(self.label_map[ann['category_id']])
+        bboxs, labels = torch.stack(bboxs, 0), torch.LongTensor(labels)
+        return bboxs, labels
 
-        # mask = torch.from_numpy(mask).float()
-        if self.mode == 1:
-            mask = 1 - mask
+    def __getitem__(self, index):
+        id_ = self.ids[index]
+        image, (bboxs, labels) = self._load_image(id_), self._load_target(id_)
+        if self.transforms is not None:
+            image, bboxs = self.transforms(image, bboxs)
 
-        # mask = mask.expand_as(img)
-        mask=mask[:,:,np.newaxis]
-        mask=np.repeat(mask,3,axis=2)
-        # print('mask shape:', mask.shape)
-        # print('img shape:', img.shape)
-        if self.offset:
-            offset = torch.from_numpy(2 * (np.random.rand(h, w) - 0.5)).float()
-            offset = (1 - mask) * offset
-            img = img * mask + offset
-        else:
-            img = img * mask
-        results['img'] = img
-        cv2.imwrite('grid_img.jpg', img)
-        return results
+        return image, bboxs, labels
+
+    def __len__(self):
+        return len(self.ids)
 
 
+my_dataset = COCO_detection(train_image_dir, train_ann)
 
-@PIPELINES.register_module
-class BBoxJitter(object):
-    """
-    bbox jitter
-    Args:
-        min (int, optional): min scale
-        max (int, optional): max scale
-        ## origin w scale
-    """
+def get_mix_data():
+    index = np.random.randint(len(my_dataset))
+    image, bboxs, label = my_dataset[index]
 
-    def __init__(self, min=0, max=2):
-        self.min_scale = min
-        self.max_scale = max
-        self.count = 0
+    image = np.array(image)
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
+    bboxs = bboxs.numpy()
+    label = label.numpy()
 
-    def bbox_jitter(self, bboxes, img_shape):
-        """Flip bboxes horizontally.
-        Args:
-            bboxes(ndarray): shape (..., 4*k)
-            img_shape(tuple): (height, width)
-        """
-        assert bboxes.shape[-1] % 4 == 0
-        if len(bboxes) == 0:
-            return bboxes
-        jitter_bboxes = []
-        for box in bboxes:
-            w = box[2] - box[0]
-            h = box[3] - box[1]
-            center_x = (box[0] + box[2]) / 2
-            center_y = (box[1] + box[3]) / 2
-            scale = np.random.uniform(self.min_scale, self.max_scale)
-            w = w * scale / 2.
-            h = h * scale / 2.
-            xmin = center_x - w
-            ymin = center_y - h
-            xmax = center_x + w
-            ymax = center_y + h
-            box2 = np.array([xmin, ymin, xmax, ymax], dtype=np.float32)
-            jitter_bboxes.append(box2)
-        jitter_bboxes = np.array(jitter_bboxes, dtype=np.float32)
-        jitter_bboxes[:, 0::2] = np.clip(jitter_bboxes[:, 0::2], 0, img_shape[1] - 1)
-        jitter_bboxes[:, 1::2] = np.clip(jitter_bboxes[:, 1::2], 0, img_shape[0] - 1)
-        return jitter_bboxes
-
-    def __call__(self, results):
-        for key in results.get('bbox_fields', []):
-
-            results[key] = self.bbox_jitter(results[key],
-                                          results['img_shape'])
-
-        return results
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(bbox_jitter={}-{})'.format(
-            self.min_scale, self.max_scale)
-
-
+    return image, bboxs, label
 
 
 @PIPELINES.register_module
@@ -164,24 +89,14 @@ class Mixup(object):
     def __init__(self, alpha=2, p=0.3):
         self.alpha = alpha
         self.prob = p
-        self.q_size = 100
-        self.q = queue.Queue(self.q_size)
-        self.before_cnt = 0
 
     def __call__(self, results):
         results['is_mixup'] = False
-        if self.q.qsize() >= self.q.maxsize:
-            self.q.get()
-        self.q.put(copy.deepcopy(results))
-
-        if self.before_cnt < self.q_size:
-            self.before_cnt += 1
-        # queue塞满之前不进行mixup，避免刚训练过的样本加入mixup
-        if np.random.rand() < self.prob and self.before_cnt >= self.q_size:
+        if np.random.rand() < self.prob:
             self.lambd = np.random.beta(self.alpha, self.alpha)
             img1 = results['img']
-            results2 = self.q.get()
-            img2 = results2['img']
+
+            img2, bboxs2, label2 = get_mix_data()
 
             height = max(img1.shape[0], img2.shape[0])
             width = max(img1.shape[1], img2.shape[1])
@@ -190,23 +105,23 @@ class Mixup(object):
             mix_img[:img2.shape[0], :img2.shape[1], :] += img2.astype('float32')*(1.-self.lambd)
             mix_img = mix_img.astype('uint8')
             results['img'] = mix_img
-            results['gt_bboxes'] = np.concatenate([results['gt_bboxes'], results2['gt_bboxes']], axis=0)
-            results['gt_labels'] = np.concatenate([results['gt_labels'], results2['gt_labels']], axis=0)
+            results['gt_bboxes'] = np.concatenate([results['gt_bboxes'], bboxs2], axis=0)
+            results['gt_labels'] = np.concatenate([results['gt_labels'], label2], axis=0)
             results['ann_info']['bboxes'] = np.concatenate([results['ann_info']['bboxes'],
-                                                            results2['ann_info']['bboxes']], axis=0)
+                                                            bboxs2], axis=0)
             results['ann_info']['labels'] = np.concatenate([results['ann_info']['labels'],
-                                                            results2['ann_info']['labels']], axis=0)
-            results['ann_info']['bboxes_ignore'] = np.concatenate([results['ann_info']['bboxes_ignore'],
-                                                                   results2['ann_info']['bboxes_ignore']], axis=0)
-            # results['ann_info']['masks'] = results['ann_info']['masks'].extend(results2['ann_info']['masks'])
+                                                            label2], axis=0)
             results['is_mixup'] = True
 
+
             # if True:
+            #     img = copy.deepcopy(results['img'])
+            #     img = img.astype('uint8')
             #     for bbox, lab in zip(results['gt_bboxes'], results['gt_labels']):
             #         xmin, ymin, xmax, ymax = np.int32(bbox)
-            #         cv2.rectangle(mix_img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
-            #         cv2.putText(mix_img, str(lab), (xmin, ymin - 10), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 0, 255), 1)
-            #         cv2.imwrite('mixip_img.jpg', mix_img)
+            #         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
+            #         cv2.putText(img, str(lab), (xmin, ymin - 10), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 0, 255), 1)
+            #         cv2.imwrite('mixip_img.jpg', img)
 
         return results
 
@@ -216,35 +131,23 @@ class CopyPaste(object):
     def __init__(self, alpha=2, p=0.3):
         self.alpha = alpha
         self.prob = p
-        self.q_size = 100
-        self.q = queue.Queue(self.q_size)
-        self.before_cnt = 0
+
 
     def limit(self, x, minv, maxv):
         return np.minimum(np.maximum(x, minv), maxv)
 
     def __call__(self, results):
-        # mixup与copypaste不能兼得
-        if results['is_mixup']:
-            return results
+        # mixup��copypaste���ܼ��
+        # if results['is_mixup']:
+        #     return results
 
-        if self.q.qsize() >= self.q.maxsize:
-            self.q.get()
-
-        self.q.put(copy.deepcopy(results))
-        if self.before_cnt < self.q_size:
-            self.before_cnt += 1
-
-        # queue塞满之前不进行copypaste
-        if np.random.rand() < self.prob and self.before_cnt >= self.q_size:
+        if np.random.rand() < self.prob:
             self.lambd = np.random.beta(self.alpha, self.alpha)
             img1 = results['img']
-
-            results2 = self.q.get()
-            copy_img = results2['img']
+            img2, bboxs2, label2 = get_mix_data()
 
             height1, width1 = img1.shape[0], img1.shape[1]
-            height2, width2 = copy_img.shape[0], copy_img.shape[1]
+            height2, width2 = img2.shape[0], img2.shape[1]
             h_scale, w_scale = height1/height2, width1/width2
             # random jitter 0.5-1.5
             h_scale = np.random.randint(50, 150)/100.0 * h_scale
@@ -252,21 +155,17 @@ class CopyPaste(object):
 
             paste_img = np.zeros(shape=(height1, width1, 3), dtype='float32')
 
-            bbox_num = len(results2['gt_bboxes'])
+            bbox_num = len(bboxs2)
             indexs = random.choices(range(bbox_num), k=np.random.randint(1, bbox_num+1))
             indexs = np.array(indexs, dtype=np.int32)
 
-            gt_bboxes = results2['gt_bboxes'][indexs]
-            gt_labels = results2['gt_labels'][indexs]
-            ann_info_bboxes = results2['ann_info']['bboxes'][indexs]
-            ann_info_labels = results2['ann_info']['labels'][indexs]
-            ann_info_bboxes_ignore = results2['ann_info']['bboxes_ignore']
-
+            gt_bboxes = bboxs2[indexs]
+            gt_labels = label2[indexs]
 
             for i, bbox in enumerate(gt_bboxes):
                 xmin, ymin, xmax, ymax = np.array(bbox, dtype=np.int32)
-                sub_img = copy.deepcopy(copy_img[ymin:ymax, xmin:xmax, :])
-                # paste目标尺寸不能超过图像的一半, 也不能太小
+                sub_img = copy.deepcopy(img2[ymin:ymax, xmin:xmax, :])
+                # pasteĿ��ߴ粻�ܳ���ͼ���һ��, Ҳ����̫С
                 # w, h = int(self.limit((xmax-xmin)*w_scale, width1*0.02, width1*0.5)), \
                 #        int(self.limit((ymax-ymin)*h_scale, height1*0.02, height1*0.5))
                 w, h = int(self.limit((xmax - xmin) * w_scale, 1, width1 * 0.5)), \
@@ -283,17 +182,57 @@ class CopyPaste(object):
             results['gt_bboxes'] = np.concatenate([results['gt_bboxes'], gt_bboxes], axis=0)
             results['gt_labels'] = np.concatenate([results['gt_labels'], gt_labels], axis=0)
             results['ann_info']['bboxes'] = np.concatenate([results['ann_info']['bboxes'],
-                                                            ann_info_bboxes], axis=0)
+                                                            gt_bboxes], axis=0)
             results['ann_info']['labels'] = np.concatenate([results['ann_info']['labels'],
-                                                            ann_info_labels], axis=0)
-            results['ann_info']['bboxes_ignore'] = np.concatenate([results['ann_info']['bboxes_ignore'],
-                                                                   ann_info_bboxes_ignore], axis=0)
+                                                            gt_labels], axis=0)
 
             # if True:
+            #     img = copy.deepcopy(results['img'])
+            #     img = img.astype('uint8')
             #     for bbox, lab in zip(results['gt_bboxes'], results['gt_labels']):
             #         xmin, ymin, xmax, ymax = np.int32(bbox)
-            #         cv2.rectangle(mix_img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
-            #         cv2.putText(mix_img, str(lab), (xmin, ymin-10), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0,0,255), 1)
-            #         cv2.imwrite('copypaste_img.jpg', mix_img)
+            #         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
+            #         cv2.putText(img, str(lab), (xmin, ymin-10), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0,0,255), 1)
+            #         cv2.imwrite('copypaste_img.jpg', img)
+
+        return results
+
+
+
+@PIPELINES.register_module
+class AutoAug(object):
+    def __init__(self, policy_v='policy_v0'):
+        self.policy = policy.Policy(policy=policy_v,
+                                    pre_transform=[],
+                                    post_transform=[])
+
+
+    def __call__(self, results):
+        img = results['img']
+        bboxes = results['gt_bboxes']
+        labels = results['gt_labels']
+        aug_image, aug_bboxes = self.policy(Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)), torch.tensor(bboxes))
+
+        results['img'] = cv2.cvtColor(np.array(aug_image, dtype=np.uint8), cv2.COLOR_RGB2BGR)
+        results['gt_bboxes'] = aug_bboxes.numpy()
+        results['ann_info']['bboxes'] = aug_bboxes.numpy()
+
+        #
+        # if True:
+        #     mix_img = copy.deepcopy(results['img'])
+        #     for bbox, lab in zip(results['gt_bboxes'], results['gt_labels']):
+        #         xmin, ymin, xmax, ymax = np.int32(bbox)
+        #         cv2.rectangle(mix_img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
+        #         cv2.putText(mix_img, str(lab), (xmin, ymin - 10), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 0, 255), 1)
+        #         # cv2.imwrite('autoaug_img_post.jpg', mix_img)
+        #
+        #     img = copy.deepcopy(img)
+        #     for bbox, lab in zip(bboxes, labels):
+        #         xmin, ymin, xmax, ymax = np.int32(bbox)
+        #         cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
+        #         cv2.putText(img, str(lab), (xmin, ymin - 10), cv2.FONT_HERSHEY_COMPLEX, 0.6, (0, 0, 255), 1)
+        #         cv2.imwrite('autoaug_img.jpg', np.hstack([img, mix_img]))
+        #         # cv2.waitKey(0)
+
 
         return results

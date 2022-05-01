@@ -11,8 +11,8 @@ from .test_time_aug import MultiScaleFlipAug
 from .transforms import (Albu, CutOut, Expand, MinIoURandomCrop, Normalize,
                          Pad, PhotoMetricDistortion, RandomCenterCropPad,
                          RandomCrop, RandomFlip, RandomShift, Resize,
-                         SegRescale)
-from .my_augumentation import GridMask, Mixup, BBoxJitter
+                         SegRescale, RandomAffine)
+from .my_augumentation import CopyPaste, Mixup, AutoAug
 
 __all__ = [
     'Compose', 'to_tensor', 'ToTensor', 'ImageToTensor', 'ToDataContainer',
@@ -24,5 +24,5 @@ __all__ = [
     'InstaBoost', 'RandomCenterCropPad', 'AutoAugment', 'CutOut', 'Shear',
     'Rotate', 'ColorTransform', 'EqualizeTransform', 'BrightnessTransform',
     'ContrastTransform', 'Translate', 'RandomShift',
-    'GridMask', 'Mixup', 'BBoxJitter'
+    'CopyPaste', 'Mixup', 'AutoAug', 'RandomAffine'
 ]

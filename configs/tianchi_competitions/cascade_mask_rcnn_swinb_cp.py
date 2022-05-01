@@ -283,7 +283,8 @@ albu_train_transforms = [
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
-    dict(type='LoadImageFromFile', to_float32=True),
+    dict(type='LoadImageFromFile'),
+    # dict(type='LoadImageFromFile', to_float32=True),
     dict(type='LoadAnnotations', with_bbox=True),
     dict(type='Mixup', p=0.5),
     dict(type='CopyPaste', p=0.3),
@@ -292,6 +293,7 @@ train_pipeline = [
         img_scale=[(2048, 800), (2048, 1400)],
         multiscale_mode='range',
         keep_ratio=True),
+    dict(type='RandomAffine', max_rotate_degree=0, max_translate_ratio=0.2, scaling_ratio_range=(0.5, 1.5), max_shear_degree=0),
     dict(type='RandomFlip', flip_ratio=0.5),
     dict(
         type='AutoAugment',
@@ -303,20 +305,19 @@ train_pipeline = [
             'type': 'ColorTransform',
             'prob': 0.5,
             'level': 6
-        }]]),
-    
-    # dict(
-    #     type='Albu',
-    #     transforms=albu_train_transforms,
-    #     bbox_params=dict(
-    #         type='BboxParams',
-    #         format='pascal_voc',
-    #         label_fields=['gt_labels'],
-    #         min_visibility=0.0,
-    #         filter_lost_elements=True),
-    #     keymap=dict(img='image', gt_masks='masks', gt_bboxes='bboxes'),
-    #     update_pad_shape=False,
-    #     skip_img_without_anno=True),
+        }]]),  
+    dict(
+        type='Albu',
+        transforms=albu_train_transforms,
+        bbox_params=dict(
+            type='BboxParams',
+            format='pascal_voc',
+            label_fields=['gt_labels'],
+            min_visibility=0.0,
+            filter_lost_elements=True),
+        keymap=dict(img='image', gt_masks='masks', gt_bboxes='bboxes'),
+        update_pad_shape=False,
+        skip_img_without_anno=True),
     dict(
         type='Normalize',
         mean=[123.675, 116.28, 103.53],
@@ -327,7 +328,8 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels'])
 ]
 test_pipeline = [
-    dict(type='LoadImageFromFile', to_float32=True),
+    # dict(type='LoadImageFromFile', to_float32=True),
+    dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
         img_scale=[(2048, 800), (2048, 900), (2048, 1000), (2048, 1100),
@@ -356,7 +358,7 @@ datasetA = dict(
 )
 data = dict(
     samples_per_gpu=1,
-    workers_per_gpu=0,
+    workers_per_gpu=4,
     train=dict(
         type='RepeatDataset',
         times=4,
@@ -413,4 +415,5 @@ resume_from = None
 workflow = [('train', 1)]
 fp16 = None
 gpu_ids = range(0, 8)
-work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5'
+work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_newaug'
+# work_dir = './work_dirs/test'
