@@ -1,5 +1,5 @@
 norm_cfg = dict(type='GN', num_groups=32, requires_grad=True)
-
+conv_cfg = dict(type='ConvWS')
 model = dict(
     type='CascadeRCNN',
     pretrained='./pretrain/simmim_finetune__swin_base__img224_window7__800ep.pth',
@@ -18,12 +18,17 @@ model = dict(
         ape=False,
         patch_norm=True,
         out_indices=(0, 1, 2, 3),
-        use_checkpoint=False),
+        use_checkpoint=False,
+        frozen_stages=1,
+        ),
     neck=dict(
         type='CBFPN',
+        # stack_times = 3,
         in_channels=[128, 256, 512, 1024],
         out_channels=256,
-        num_outs=5),
+        num_outs=5,
+        conv_cfg=conv_cfg, 
+        norm_cfg=norm_cfg),
     rpn_head=dict(
         type='RPNHead',
         in_channels=256,
@@ -69,6 +74,7 @@ model = dict(
                 num_cls_fcs=1,
                 num_reg_fcs=0,
                 reg_class_agnostic=True,
+                # conv_cfg=conv_cfg, 
                 norm_cfg=norm_cfg,
                 bbox_coder=dict(
                     type='BucketingBBoxCoder',
@@ -100,6 +106,7 @@ model = dict(
                 num_cls_fcs=1,
                 num_reg_fcs=0,
                 reg_class_agnostic=True,
+                # conv_cfg=conv_cfg, 
                 norm_cfg=norm_cfg,
                 bbox_coder=dict(
                     type='BucketingBBoxCoder',
@@ -131,6 +138,7 @@ model = dict(
                 num_cls_fcs=1,
                 num_reg_fcs=0,
                 reg_class_agnostic=True,
+                # conv_cfg=conv_cfg, 
                 norm_cfg=norm_cfg,
                 bbox_coder=dict(
                     type='BucketingBBoxCoder',
@@ -175,33 +183,18 @@ model = dict(
             dict(
                 assigner=dict(
                     type='MaxIoUAssigner',
-                    pos_iou_thr=0.4, # 更换
-                    neg_iou_thr=0.4,
-                    min_pos_iou=0.4,
-                    match_low_quality=False,
-                    ignore_iof_thr=-1),
-                sampler=dict(
-                    type='OHEMSampler',
-                    num=512,
-                    pos_fraction=0.25,
-                    neg_pos_ub=-1,
-                    add_gt_as_proposals=True),
-                pos_weight=-1,
-                debug=False),
-            dict(
-                assigner=dict(
-                    type='MaxIoUAssigner',
                     pos_iou_thr=0.5,
                     neg_iou_thr=0.5,
                     min_pos_iou=0.5,
                     match_low_quality=False,
                     ignore_iof_thr=-1),
                 sampler=dict(
-                    type='OHEMSampler', # 解决难易样本，也解决了正负样本比例问题。
+                    type='RandomSampler',
                     num=512,
                     pos_fraction=0.25,
                     neg_pos_ub=-1,
                     add_gt_as_proposals=True),
+                mask_size=28,
                 pos_weight=-1,
                 debug=False),
             dict(
@@ -213,11 +206,29 @@ model = dict(
                     match_low_quality=False,
                     ignore_iof_thr=-1),
                 sampler=dict(
-                    type='OHEMSampler',
+                    type='RandomSampler',
                     num=512,
                     pos_fraction=0.25,
                     neg_pos_ub=-1,
                     add_gt_as_proposals=True),
+                mask_size=28,
+                pos_weight=-1,
+                debug=False),
+            dict(
+                assigner=dict(
+                    type='MaxIoUAssigner',
+                    pos_iou_thr=0.7,
+                    neg_iou_thr=0.7,
+                    min_pos_iou=0.7,
+                    match_low_quality=False,
+                    ignore_iof_thr=-1),
+                sampler=dict(
+                    type='RandomSampler',
+                    num=512,
+                    pos_fraction=0.25,
+                    neg_pos_ub=-1,
+                    add_gt_as_proposals=True),
+                mask_size=28,
                 pos_weight=-1,
                 debug=False)
         ]),
@@ -287,8 +298,10 @@ train_pipeline = [
     dict(type='CopyPaste', p=0.3),
     dict(
         type='Resize',
-        img_scale=[(2048, 800), (2048, 1400)],
-        multiscale_mode='range',
+        # img_scale=[(2048, 800), (2048, 1400)],
+        img_scale = (1920, 1280),
+        ratio_range = (0.8, 1.2),
+        # multiscale_mode='range',
         keep_ratio=True),
     dict(type='RandomAffine', max_rotate_degree=0, max_translate_ratio=0.2, scaling_ratio_range=(0.5, 1.5), max_shear_degree=0),
     dict(type='RandomFlip', flip_ratio=0.5),
@@ -329,8 +342,9 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=[(2048, 800), (2048, 900), (2048, 1000), (2048, 1100),
-                   (2048, 1200), (2048, 1300), (2048, 1400)],
+        # img_scale=[(2048, 800), (2048, 900), (2048, 1000), (2048, 1100),
+        #            (2048, 1200), (2048, 1300), (2048, 1400)],
+        img_scale = [(1536, 1024), (1664, 1100), (1792, 1194), (1920, 1280), (2048, 1365), (2176, 1450), (2304, 1536)],
         flip=True,
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -358,7 +372,7 @@ data = dict(
     workers_per_gpu=4,
     train=dict(
         type='RepeatDataset',
-        times=4,
+        times=2,
         dataset=dict(
             type='ConcatDataset',
             datasets=[datasetA]
@@ -377,7 +391,7 @@ data = dict(
         pipeline=test_pipeline
     )
 )
-evaluation = dict(interval=1, metric='bbox')
+evaluation = dict(interval=1, metric='bbox', start=20)
 optimizer = dict(
     type='AdamW',
     lr=0.0002,
@@ -400,9 +414,9 @@ lr_config = dict(
     warmup='linear',
     warmup_iters=250,
     warmup_ratio=0.001,
-    step=[8, 11])
-runner = dict(type='EpochBasedRunner', max_epochs=12)
-checkpoint_config = dict(interval=3)
+    step=[20, 23])
+runner = dict(type='EpochBasedRunner', max_epochs=24)
+checkpoint_config = dict(interval=6)
 log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook')])
 custom_hooks = [dict(type='NumClassCheckHook')]
 dist_params = dict(backend='nccl')
@@ -412,5 +426,5 @@ resume_from = None
 workflow = [('train', 1)]
 fp16 = None
 gpu_ids = range(0, 8)
-work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_ohem'
+work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize_gnws'
 # work_dir = './work_dirs/test'

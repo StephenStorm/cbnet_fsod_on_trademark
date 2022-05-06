@@ -175,33 +175,18 @@ model = dict(
             dict(
                 assigner=dict(
                     type='MaxIoUAssigner',
-                    pos_iou_thr=0.4, # 更换
-                    neg_iou_thr=0.4,
-                    min_pos_iou=0.4,
-                    match_low_quality=False,
-                    ignore_iof_thr=-1),
-                sampler=dict(
-                    type='OHEMSampler',
-                    num=512,
-                    pos_fraction=0.25,
-                    neg_pos_ub=-1,
-                    add_gt_as_proposals=True),
-                pos_weight=-1,
-                debug=False),
-            dict(
-                assigner=dict(
-                    type='MaxIoUAssigner',
                     pos_iou_thr=0.5,
                     neg_iou_thr=0.5,
                     min_pos_iou=0.5,
                     match_low_quality=False,
                     ignore_iof_thr=-1),
                 sampler=dict(
-                    type='OHEMSampler', # 解决难易样本，也解决了正负样本比例问题。
+                    type='RandomSampler',
                     num=512,
                     pos_fraction=0.25,
                     neg_pos_ub=-1,
                     add_gt_as_proposals=True),
+                mask_size=28,
                 pos_weight=-1,
                 debug=False),
             dict(
@@ -213,11 +198,29 @@ model = dict(
                     match_low_quality=False,
                     ignore_iof_thr=-1),
                 sampler=dict(
-                    type='OHEMSampler',
+                    type='RandomSampler',
                     num=512,
                     pos_fraction=0.25,
                     neg_pos_ub=-1,
                     add_gt_as_proposals=True),
+                mask_size=28,
+                pos_weight=-1,
+                debug=False),
+            dict(
+                assigner=dict(
+                    type='MaxIoUAssigner',
+                    pos_iou_thr=0.7,
+                    neg_iou_thr=0.7,
+                    min_pos_iou=0.7,
+                    match_low_quality=False,
+                    ignore_iof_thr=-1),
+                sampler=dict(
+                    type='RandomSampler',
+                    num=512,
+                    pos_fraction=0.25,
+                    neg_pos_ub=-1,
+                    add_gt_as_proposals=True),
+                mask_size=28,
                 pos_weight=-1,
                 debug=False)
         ]),
@@ -283,38 +286,38 @@ train_pipeline = [
     dict(type='LoadImageFromFile'),
     # dict(type='LoadImageFromFile', to_float32=True),
     dict(type='LoadAnnotations', with_bbox=True),
-    dict(type='Mixup', p=0.5),
-    dict(type='CopyPaste', p=0.3),
+    # dict(type='Mixup', p=0.5),
+    # dict(type='CopyPaste', p=0.3),
     dict(
         type='Resize',
         img_scale=[(2048, 800), (2048, 1400)],
         multiscale_mode='range',
         keep_ratio=True),
-    dict(type='RandomAffine', max_rotate_degree=0, max_translate_ratio=0.2, scaling_ratio_range=(0.5, 1.5), max_shear_degree=0),
-    dict(type='RandomFlip', flip_ratio=0.5),
-    dict(
-        type='AutoAugment',
-        policies=[[{
-            'type': 'Shear',
-            'prob': 0.5,
-            'level': 0
-        }], [{
-            'type': 'ColorTransform',
-            'prob': 0.5,
-            'level': 6
-        }]]),  
-    dict(
-        type='Albu',
-        transforms=albu_train_transforms,
-        bbox_params=dict(
-            type='BboxParams',
-            format='pascal_voc',
-            label_fields=['gt_labels'],
-            min_visibility=0.0,
-            filter_lost_elements=True),
-        keymap=dict(img='image', gt_masks='masks', gt_bboxes='bboxes'),
-        update_pad_shape=False,
-        skip_img_without_anno=True),
+    # dict(type='RandomAffine', max_rotate_degree=0, max_translate_ratio=0.2, scaling_ratio_range=(0.5, 1.5), max_shear_degree=0),
+    dict(type='RandomFlip', flip_ratio=0.0),
+    # dict(
+    #     type='AutoAugment',
+    #     policies=[[{
+    #         'type': 'Shear',
+    #         'prob': 0.5,
+    #         'level': 0
+    #     }], [{
+    #         'type': 'ColorTransform',
+    #         'prob': 0.5,
+    #         'level': 6
+    #     }]]),  
+    # dict(
+    #     type='Albu',
+    #     transforms=albu_train_transforms,
+    #     bbox_params=dict(
+    #         type='BboxParams',
+    #         format='pascal_voc',
+    #         label_fields=['gt_labels'],
+    #         min_visibility=0.0,
+    #         filter_lost_elements=True),
+    #     keymap=dict(img='image', gt_masks='masks', gt_bboxes='bboxes'),
+    #     update_pad_shape=False,
+    #     skip_img_without_anno=True),
     dict(
         type='Normalize',
         mean=[123.675, 116.28, 103.53],
@@ -401,8 +404,8 @@ lr_config = dict(
     warmup_iters=250,
     warmup_ratio=0.001,
     step=[8, 11])
-runner = dict(type='EpochBasedRunner', max_epochs=12)
-checkpoint_config = dict(interval=3)
+runner = dict(type='EpochBasedRunner', max_epochs=14)
+checkpoint_config = dict(interval=1)
 log_config = dict(interval=50, hooks=[dict(type='TextLoggerHook')])
 custom_hooks = [dict(type='NumClassCheckHook')]
 dist_params = dict(backend='nccl')
@@ -412,5 +415,5 @@ resume_from = None
 workflow = [('train', 1)]
 fp16 = None
 gpu_ids = range(0, 8)
-work_dir = './work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_ohem'
+work_dir = '/opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_3layer'
 # work_dir = './work_dirs/test'
