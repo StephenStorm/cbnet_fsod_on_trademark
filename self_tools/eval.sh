@@ -37,10 +37,10 @@ python tools/train.py \
     --options "jsonfile_prefix=./mask_rcnn_test-dev_results"
 
 ./tools/dist_test.sh \
-   //opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize2/cascade_mask_rcnn_swinb_cp_resize.py \
-   /opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize2/epoch_12.pth \
+   /opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize/cascade_mask_rcnn_swinb_cp_resize_infer2.py \
+   /opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize/epoch_12.pth \
     8 \
     --format-only \
-    --options "jsonfile_prefix=/opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize2/resize2"
+    --options "jsonfile_prefix=/opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize/0510TTA"
     
 

@@ -289,8 +289,10 @@ class CBSwinTransformer(BaseModule):
         self.cb_zero_init = cb_zero_init
         self.cb_del_stages = cb_del_stages
         self.cb_modules = nn.ModuleList()
+        # for cb_idx in range(2):
         for cb_idx in range(3):
             cb_module = _SwinTransformer(embed_dim=embed_dim, **kwargs)
+            # if cb_idx > 0:
             if cb_idx > 1:
                 cb_module.del_layers(cb_del_stages)
             self.cb_modules.append(cb_module)
@@ -304,9 +306,12 @@ class CBSwinTransformer(BaseModule):
             linears = nn.ModuleList()
             if i >= self.cb_del_stages-1:
                 jrange = 4 - i
+                # jrange = 4
                 for j in range(jrange):
                     if cb_inplanes[i + j] != cb_inplanes[i]:
+                    # if cb_inplanes[j] != cb_inplanes[i]:
                         layer = nn.Conv2d(cb_inplanes[i + j], cb_inplanes[i], 1)
+                        # layer = nn.Conv2d(cb_inplanes[j], cb_inplanes[i], 1)
                     else:
                         layer = nn.Identity()
                     linears.append(layer)
@@ -318,6 +323,7 @@ class CBSwinTransformer(BaseModule):
 
     def init_weights(self):
         """Initialize the weights in backbone.
+
         Args:
             pretrained (str, optional): Path to pre-trained weights.
                 Defaults to None.
@@ -346,8 +352,10 @@ class CBSwinTransformer(BaseModule):
             feed = 0
             if i >= self.cb_del_stages-1:
                 jrange = 4 - i
+                # jrange = 4
                 for j in range(jrange):
                     tmp = self.cb_linears[i][j](feats[j + i])
+                    # tmp = self.cb_linears[i][j](feats[j])
                     tmp = self.spatial_interpolate(tmp, Wh, Ww)
                     feed += tmp
             cb_feats.append(feed)
@@ -379,3 +387,4 @@ class CBSwinTransformer(BaseModule):
             # trick: eval have effect on BatchNorm only
             if isinstance(m, _BatchNorm):
                 m.eval()
+

@@ -93,7 +93,7 @@ def processing_json(json_data, imageid_cates, save_path):
 
 
 if __name__=='__main__':
-    file = '/opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize2/resize2.bbox.json'
+    file = '/opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize_1920_15/resize_bigger_0509.bbox.json'
     file_post = file.replace('.bbox', '_postprocess')
     # print(file_post)
     if os.path.exists(file_post) :
