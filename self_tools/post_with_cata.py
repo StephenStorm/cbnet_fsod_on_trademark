@@ -94,9 +94,9 @@ def load_cates_txt(file):
 
 
 if __name__=='__main__':
-    file = 'res_mix05_affine_freeze1_resize.bbox.json'
-    file_post = 'mypost_res_mix05_affine_freeze1_resize.bbox.json'
-    file_cates = 'cates.txt'
+    file = '/opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize/0510TTA.bbox.json'
+    file_post = '/opt/tiger/haggs/CBNetV2/work_dirs/cascade_mask_rcnn_cbv2_swin_base_cp_mixup0.5_affine_freeze_stage1_resize/0510TTA_post2.json'
+    file_cates = '/opt/tiger/haggs/CBNetV2/self_tools/cates.txt'
 
     imageid_cates_true = load_cates_txt(file_cates)
 
@@ -106,7 +106,7 @@ if __name__=='__main__':
 
     new_imageid_cates = filter_cate(imageid_cates)
 
-    processing_json(json_data, new_imageid_cates, file_post)
+    processing_json(json_data, imageid_cates_true, file_post)
 
 
 
